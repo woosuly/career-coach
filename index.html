@@ -22,6 +22,8 @@ input,textarea,select{font:inherit;color:var(--ink);background:var(--card2);bord
 input:focus,textarea:focus,select:focus{border-color:var(--acc)}
 textarea{resize:vertical;min-height:72px}
 label{display:block;font-size:13px;color:var(--sub);margin:12px 0 6px}
+label.chk{display:inline-flex;align-items:center;gap:8px;margin:0;font-size:14px;color:var(--ink)}
+input[type=checkbox]{width:18px;height:18px;padding:0;accent-color:var(--acc)}
 .wrap{max-width:760px;margin:0 auto;padding:0 16px}
 header{position:sticky;top:0;z-index:20;background:var(--hdr);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
 header .wrap{display:flex;align-items:center;gap:8px;height:58px}
@@ -407,12 +409,20 @@ function vAI(){const p=S.set.provider,names={claude:'Claude',openai:'GPT',gemini
  ${S.chat.length?'<div style="text-align:right;margin-top:8px"><button class="btn sm ghost" data-act="chatclear">대화 지우기</button></div>':''}`}
 
 /* ======================= 화면: 설정 ======================= */
+const MODEL_DEFAULTS={claude:['claude-opus-5-5','claude-sonnet-5-5','claude-haiku-5-5','claude-fable-5-1'],openai:['gpt-6-astra','gpt-5.4-mini','gpt-5.4-nano'],gemini:['gemini-4-argon','gemini-3.8-flash','gemini-3.6-flash','gemini-3.5-flash-lite']};
+const modelList=p=>{const l=(S.set.modelLists&&S.set.modelLists[p]&&S.set.modelLists[p].length)?S.set.modelLists[p]:MODEL_DEFAULTS[p];return l};
+function aiFields(){const st=S.set,p=st.provider,name={claude:'Claude',openai:'GPT',gemini:'Gemini'}[p],key=st.keys[p]||'',cur=st.models[p]||'',list=modelList(p),custom=ui.customModel||(cur&&!list.includes(cur)),fetched=!!(st.modelLists&&st.modelLists[p]&&st.modelLists[p].length);
+ return `<label>${name} API 키</label><input id="keyin" type="${ui.showKey?'text':'password'}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-bind="set.keys.${p}" value="${esc(key)}" placeholder="${name} API 키 붙여넣기">
+ <div class="row" style="margin-top:8px;justify-content:space-between"><label class="chk"><input type="checkbox" data-act2="showkey" ${ui.showKey?'checked':''}> 키 보이기</label><span class="muted">${key?`입력됨 · 끝자리 ${esc(key.slice(-4))}`:'미입력'}</span></div>
+ <label>${name} 모델</label><select data-act2="model">${list.map(m=>`<option value="${esc(m)}" ${m===cur&&!custom?'selected':''}>${esc(m)}</option>`).join('')}<option value="__custom" ${custom?'selected':''}>직접 입력…</option></select>
+ ${custom?`<input style="margin-top:8px" data-bind="set.models.${p}" value="${esc(cur)}" placeholder="모델 ID 입력" autocapitalize="off" autocorrect="off" spellcheck="false">`:''}
+ <div class="muted" style="margin-top:6px">${fetched?'이 키로 불러온 실제 사용 가능 목록입니다.':'기본 목록입니다. 키 입력 후 "모델 목록 불러오기"로 최신 목록을 받으세요.'}</div>
+ <div class="btns" style="margin-top:12px"><button class="btn" data-act="loadmodels" ${key?'':'disabled'}>모델 목록 불러오기</button><button class="btn" data-act="test" ${key?'':'disabled'}>연결 테스트</button></div>`}
 function vSet(){const st=S.set,PL=[['claude','Claude (Anthropic)'],['openai','GPT (OpenAI)'],['gemini','Gemini (Google)']],m=M(S.cur);
  return `<h2>설정</h2>
  <div class="card"><h3>AI 연결</h3><div class="muted">키는 이 기기 브라우저에만 저장되고 각 회사 API로만 전송됩니다.</div>
- <label>기본 AI</label><div class="seg">${PL.map(([k,n])=>`<button class="${st.provider===k?'on':''}" data-act="prov" data-p="${k}">${n.split(' ')[0]}</button>`).join('')}</div>
- ${PL.map(([k,n])=>`<label>${n} API 키</label><input type="password" autocomplete="off" data-bind="set.keys.${k}" value="${esc(st.keys[k])}" placeholder="키 입력"><label>${n.split(' ')[0]} 모델명</label><input data-bind="set.models.${k}" value="${esc(st.models[k])}">`).join('')}
- <div class="btns" style="margin-top:12px"><button class="btn" data-act="test">연결 테스트</button></div></div>
+ <label>사용할 AI</label><div class="seg">${PL.map(([k,n])=>`<button class="${st.provider===k?'on':''}" data-act="prov" data-p="${k}">${n.split(' ')[0]}</button>`).join('')}</div>
+ ${aiFields()}</div>
  <div class="card"><h3>학습 일정</h3><label style="margin-top:0">현재 테마(${esc(m.ym)}) Day 1 날짜</label><input type="date" data-act2="anchor" value="${esc(m.anchor||today())}"><div class="muted" style="margin-top:6px">평일 기준으로 일별 예정일과 시험일이 계산됩니다.</div></div>
  <div class="card"><h3>멈춤 · 재개</h3><div class="muted" style="margin-bottom:10px">재개하면 멈춘 기간만큼 예정일이 뒤로 밀립니다. 진도는 그대로 유지됩니다.</div>
  ${isPaused()?'<button class="btn pri" data-act="resume">학습 재개</button>':'<button class="btn" data-act="pause">학습 멈춤</button>'}
@@ -469,6 +479,8 @@ function render(){
  if(ui.modal&&ui.modal.t==='search'){const q=document.getElementById('sq');if(q){q.focus();q.setSelectionRange(q.value.length,q.value.length)}}
  if(S.tab==='ai'&&!ui.modal){const c=document.querySelector('.chat');c&&c.lastElementChild&&c.lastElementChild.scrollIntoView({block:'nearest'})}
 }
+function softRender(){const a=typeof document!=='undefined'&&document.activeElement;if(a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA')&&a.type!=='checkbox'){ui.pendingRender=true;return}render()}
+if(typeof document!=='undefined'&&document.addEventListener)document.addEventListener('focusout',()=>setTimeout(()=>{if(!ui.pendingRender)return;const a=document.activeElement;if(a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA'))return;ui.pendingRender=false;render()},60));
 function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),2600)}
 function setPath(path,val){const ks=path.split('.');let o=S;for(let i=0;i<ks.length-1;i++){if(o[ks[i]]==null)o[ks[i]]={};o=o[ks[i]]}o[ks.at(-1)]=val}
 
@@ -559,7 +571,14 @@ const A={
  addact:()=>{ui.modal={t:'act'};render()},
  saveact:()=>{const g=id=>document.getElementById(id).value.trim();if(!g('a_n')){toast('내용을 입력하세요');return}S.acts.push({id:uid(),d:g('a_d')||today(),t:g('a_t'),title:g('a_n'),memo:g('a_m')});ui.modal=null;save();render()},
  delact:d=>{if(confirm('삭제할까요?')){S.acts=S.acts.filter(a=>a.id!==d.id);save();render()}},
- prov:d=>{S.set.provider=d.p;save();render()},
+ prov:d=>{S.set.provider=d.p;ui.customModel=false;save();render()},
+ loadmodels:async()=>{const p=S.set.provider,key=(S.set.keys[p]||'').trim();if(!key)return;toast('모델 목록 불러오는 중…');
+  try{let ids=[];
+   if(p==='claude'){const r=await fetch('https://api.anthropic.com/v1/models?limit=100',{headers:{'x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'}});const j=await r.json();if(!r.ok)throw new Error(j.error?.message||r.status);ids=(j.data||[]).map(x=>x.id)}
+   else if(p==='openai'){const r=await fetch('https://api.openai.com/v1/models',{headers:{authorization:'Bearer '+key}});const j=await r.json();if(!r.ok)throw new Error(j.error?.message||r.status);ids=(j.data||[]).map(x=>x.id).filter(id=>/^(gpt|o\d|chatgpt)/.test(id)&&!/(audio|realtime|tts|transcribe|image|search|embedding|instruct)/.test(id)).sort().reverse()}
+   else{const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200&key='+encodeURIComponent(key));const j=await r.json();if(!r.ok)throw new Error(j.error?.message||r.status);ids=(j.models||[]).filter(m=>(m.supportedGenerationMethods||[]).includes('generateContent')).map(m=>m.name.replace(/^models\//,'')).filter(id=>/^gemini/.test(id)&&!/(embedding|image|tts|audio)/.test(id)).sort().reverse()}
+   if(!ids.length)throw new Error('사용 가능한 모델이 없습니다');S.set.modelLists=S.set.modelLists||{};S.set.modelLists[p]=ids;if(!ids.includes(S.set.models[p]))S.set.models[p]=ids[0];ui.customModel=false;save();render();toast(`${ids.length}개 모델을 불러왔습니다`)
+  }catch(e){toast('불러오기 실패: '+e.message)}},
  send:()=>{const t=document.getElementById('ask').value.trim();if(t)ask(t)},
  chatclear:()=>{if(confirm('대화를 지울까요?')){S.chat=[];save();render()}},
  aiex:()=>{const m=M(S.cur),k=nextItem(m),it=m.items[k];if(!it){toast('진행 중인 학습이 없습니다');return}ask(`'${it.title}'를 비전공자 관리자도 이해할 수 있게, 공장 설비 비유로 쉽게 설명해줘. 핵심: ${it.summary.join(' / ')}`,`Day ${k+1} 쉽게 설명해줘`)},
@@ -582,6 +601,8 @@ const A={
 document.addEventListener('click',e=>{const el=e.target.closest('[data-act]');if(!el)return;const f=A[el.dataset.act];if(!f)return;if(el.dataset.act!=='bg')e.preventDefault();f(el.dataset,el,e)});
 document.addEventListener('input',e=>{const t=e.target;if(t.dataset.bind){setPath(t.dataset.bind,t.value);save()}if(t.id==='sq'){ui.lastQ=t.value;const r=document.getElementById('sres');if(r)r.innerHTML=searchHTML(t.value)}});
 document.addEventListener('change',e=>{const t=e.target;
+ if(t.dataset.act2==='showkey'){ui.showKey=t.checked;render();return}
+ if(t.dataset.act2==='model'){const p=S.set.provider;if(t.value==='__custom'){ui.customModel=true;render();setTimeout(()=>{const i=document.querySelector('[data-bind="set.models.'+p+'"]');if(i)i.focus()},30)}else{S.set.models[p]=t.value;ui.customModel=false;save();render();toast('모델: '+t.value)}return}
  if(t.dataset.act2==='anchor'&&t.value){M(S.cur).anchor=ymd(toWd(P(t.value)));save();toast('일정을 다시 계산했습니다');render()}
  if(t.id==='impf'&&t.files[0]){const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!d.months)throw 0;const k=S.set.keys;S=d;S.set.keys={...k};document.documentElement.dataset.theme=S.theme||'dark';save();render();toast('가져왔습니다')}catch(_){toast('백업 파일 형식이 아닙니다')}};r.readAsText(t.files[0])}});
 document.addEventListener('keydown',e=>{if(e.target.id==='ask'&&e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();A.send()}});
@@ -597,8 +618,8 @@ function loadScript(u){return new Promise((ok,no)=>{const s=document.createEleme
 async function fbBoot(){const cfg=fbCfg();if(!cfg)return;ui.fbState='연결 중';
  try{const b='https://www.gstatic.com/firebasejs/10.12.2/';if(typeof firebase==='undefined'){await loadScript(b+'firebase-app-compat.js');await loadScript(b+'firebase-auth-compat.js');await loadScript(b+'firebase-firestore-compat.js')}
   const app=firebase.apps.length?firebase.app():firebase.initializeApp(cfg);FB.auth=app.auth();FB.db=app.firestore();
-  FB.auth.onAuthStateChanged(u=>{ui.user=u;if(u)startSync(u).catch(e=>{ui.fbState='오류: '+e.message;render()});else{stopSync();ui.fbState='로그인 필요'}render()});
- }catch(e){ui.fbState='오류: '+e.message;render()}}
+  FB.auth.onAuthStateChanged(u=>{ui.user=u;if(u)startSync(u).catch(e=>{ui.fbState='오류: '+e.message;softRender()});else{stopSync();ui.fbState='로그인 필요'}softRender()});
+ }catch(e){ui.fbState='오류: '+e.message;softRender()}}
 function assemble(snap){let meta=null;const ms=[];snap.forEach(d=>{const x=d.data();if(d.id==='meta')meta=x;else if(/^m\d+$/.test(d.id))ms[+d.id.slice(1)]=x});
  if(!meta)return null;const mo=JSON.parse(meta.json),n=mo.monthCount||ms.length;delete mo.monthCount;
  const months=[];for(let i=0;i<n;i++){if(!ms[i])return null;months.push(JSON.parse(ms[i].json))}
@@ -606,7 +627,7 @@ function assemble(snap){let meta=null;const ms=[];snap.forEach(d=>{const x=d.dat
  return{data:{...mo,months},updatedAt:meta.updatedAt||0,device:meta.device,pushed}}
 function applyRemote(r){S={...r.data,set:S.set,theme:S.theme,tab:S.tab,view:null,syncUid:ui.user.uid,updatedAt:r.updatedAt};FB.pushed=r.pushed;ui.lastPayload=payloadStr();
  try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}ui.exam=null;ui.result=null;ui.modal=null;ui.lastSync=Date.now()}
-async function startSync(u){ui.fbState='동기화 중';render();FB.col=FB.db.collection('users').doc(u.uid).collection('career');
+async function startSync(u){ui.fbState='동기화 중';softRender();FB.col=FB.db.collection('users').doc(u.uid).collection('career');
  const r=assemble(await FB.col.get());
  if(!r){S.syncUid=u.uid;await push(true)}
  else if(S.syncUid===u.uid){if(r.updatedAt>(S.updatedAt||0))applyRemote(r);else{FB.pushed=r.pushed;if((S.updatedAt||0)>r.updatedAt)await push(true)}}
@@ -616,15 +637,15 @@ async function startSync(u){ui.fbState='동기화 중';render();FB.col=FB.db.col
  S.syncUid=u.uid;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}
  ui.syncReady=true;ui.fbState='동기화 켜짐';ui.lastSync=ui.lastSync||Date.now();
  if(FB.unsub)FB.unsub();
- FB.unsub=FB.col.onSnapshot(sn=>{if(sn.metadata.hasPendingWrites)return;const x=assemble(sn);if(x&&x.updatedAt>(S.updatedAt||0)&&x.device!==DEVICE){applyRemote(x);render();toast('다른 기기의 기록을 반영했습니다')}},e=>{ui.fbState='오류: '+e.message;render()});
- render()}
+ FB.unsub=FB.col.onSnapshot(sn=>{if(sn.metadata.hasPendingWrites)return;const x=assemble(sn);if(x&&x.updatedAt>(S.updatedAt||0)&&x.device!==DEVICE){applyRemote(x);softRender();toast('다른 기기의 기록을 반영했습니다')}},e=>{ui.fbState='오류: '+e.message;softRender()});
+ softRender()}
 function stopSync(){if(FB.unsub)FB.unsub();FB.unsub=null;ui.syncReady=false;FB.col=null}
-function schedulePush(){if(!ui.syncReady)return;clearTimeout(FB.timer);FB.timer=setTimeout(()=>push().catch(e=>{ui.fbState='저장 실패: '+e.message;if(S.tab==='set')render()}),1500)}
+function schedulePush(){if(!ui.syncReady)return;clearTimeout(FB.timer);FB.timer=setTimeout(()=>push().catch(e=>{ui.fbState='저장 실패: '+e.message;if(S.tab==='set')softRender()}),1500)}
 async function push(force){if(!FB.col||(!ui.syncReady&&!force))return;const p=payloadObj(),docs={meta:JSON.stringify({...p.meta,monthCount:p.months.length})};p.months.forEach((m,i)=>docs['m'+i]=JSON.stringify(m));
  const ch=Object.keys(docs).filter(k=>docs[k]!==FB.pushed[k]);if(!ch.length)return;if(!ch.includes('meta'))ch.push('meta');
  if(!S.updatedAt)S.updatedAt=Date.now();const t=S.updatedAt,b=FB.db.batch();
  ch.forEach(k=>b.set(FB.col.doc(k),k==='meta'?{json:docs.meta,updatedAt:t,device:DEVICE}:{json:docs[k],updatedAt:t}));
- await b.commit();ch.forEach(k=>FB.pushed[k]=docs[k]);ui.lastSync=Date.now();ui.fbState='동기화 켜짐';if(S.tab==='set')render()}
+ await b.commit();ch.forEach(k=>FB.pushed[k]=docs[k]);ui.lastSync=Date.now();ui.fbState='동기화 켜짐';if(S.tab==='set')softRender()}
 function vSync(){const cfg=fbCfg();
  const rules=`<details style="margin-top:12px"><summary class="muted">Firestore 보안 규칙 (필수)</summary><pre style="white-space:pre-wrap;font-size:12px;background:var(--card2);padding:10px;border-radius:8px;margin:8px 0 0">match /users/{uid}/career/{doc} {\n  allow read, write: if request.auth != null\n    && request.auth.uid == uid;\n}</pre><div class="muted" style="margin-top:6px">기존 규칙의 documents 블록 안에 추가하세요. 로그인한 사용자 전체에 열린 와일드카드 규칙이 있으면 이 기록을 다른 사용자도 볼 수 있으니 함께 확인하세요. Authentication에서 Google 로그인 사용, 승인된 도메인에 woosuly.github.io가 있어야 합니다.</div></details>`;
  if(!cfg)return `<div class="card"><h3>클라우드 동기화 (Firebase)</h3><div class="muted">휴대폰·PC 기록을 맞추려면 Firebase 웹 앱 설정(firebaseConfig)을 붙여넣으세요. 이 기기에만 저장됩니다.</div><textarea id="fbcfg" style="margin-top:10px;min-height:110px;font-size:12.5px" placeholder="const firebaseConfig = { apiKey: &quot;…&quot;, authDomain: &quot;…&quot;, projectId: &quot;…&quot;, … }"></textarea><div class="btns" style="margin-top:10px"><button class="btn pri" data-act="fbsave">저장하고 연결</button></div>${rules}</div>`;
@@ -637,7 +658,7 @@ let tx=null,ty=null;
 document.addEventListener('touchstart',e=>{tx=null;if(ui.modal&&ui.modal.t==='item'&&e.target.closest('.sheet')&&!e.target.closest('textarea,input,a')){tx=e.touches[0].clientX;ty=e.touches[0].clientY}},{passive:true});
 document.addEventListener('touchend',e=>{if(tx==null||!ui.modal||ui.modal.t!=='item')return;const dx=e.changedTouches[0].clientX-tx,dy=e.changedTouches[0].clientY-ty;tx=null;if(Math.abs(dx)<70||Math.abs(dy)>50)return;
  const m=M(ui.modal.m),k=ui.modal.k+(dx<0?1:-1);if(k<0||k>=m.items.length)return;ui.modal={t:'item',m:ui.modal.m,k};render();const sh=document.querySelector('.sheet');if(sh)sh.scrollTop=0},{passive:true});
-if(typeof navigator!=='undefined'&&navigator.storage&&navigator.storage.persist){navigator.storage.persisted().then(p=>p||navigator.storage.persist()).then(p=>{ui.persist=!!p;if(S.tab==='set')render()}).catch(()=>{ui.persist=false})}else ui.persist=false;
+if(typeof navigator!=='undefined'&&navigator.storage&&navigator.storage.persist){navigator.storage.persisted().then(p=>p||navigator.storage.persist()).then(p=>{ui.persist=!!p;if(S.tab==='set')softRender()}).catch(()=>{ui.persist=false})}else ui.persist=false;
 render();
 fbBoot();
 if(typeof navigator!=='undefined'&&'serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
