@@ -18,6 +18,10 @@ const I={
 function ring(p,big,sub,col){const r=34,c=2*Math.PI*r,v=Math.max(0,Math.min(1,p));return `<svg viewBox="0 0 84 84" width="84" height="84"><circle cx="42" cy="42" r="${r}" fill="none" stroke="var(--card2)" stroke-width="8"/><circle cx="42" cy="42" r="${r}" fill="none" stroke="${col||'var(--acc)'}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${c*v} ${c}" transform="rotate(-90 42 42)"/><text x="42" y="45" text-anchor="middle" font-size="17" font-weight="700" fill="var(--ink)">${big}</text><text x="42" y="60" text-anchor="middle" font-size="9.5" fill="var(--sub)">${sub}</text></svg>`}
 
 /* ======================= 공통 조각 ======================= */
+// 진척 막대: 완료/전체, 퍼센트 라벨, 5일(1주) 단위 구분선과 주차 라벨
+function progBar(d,n,unit,week){const p=n?Math.round(d/n*100):0;let tk='',wl='';
+ if(week&&n>5){const W=Math.ceil(n/5),cw=Math.min(W-1,Math.floor(d/5));for(let w=1;w<W;w++)tk+=`<s style="left:${w*5/n*100}%"></s>`;for(let w=0;w<W;w++){const a=w*5,b=Math.min(n,a+5);wl+=`<span class="${w===cw&&d<n?'on':''}" style="left:${(a+b)/2/n*100}%">${w+1}주</span>`}}
+ return `<div class="pbar-h"><span>${d}/${n}${unit}</span><b>${p}%</b></div><div class="prog pb"><i style="width:${p}%"></i>${tk}</div>${wl?`<div class="pwk">${wl}</div>`:''}`}
 function pauseBanner(){const p=S.pauses.find(p=>!p.end);if(!p)return'';const d=Math.floor((Date.now()-Date.parse(p.start))/DAY);return `<div class="banner warn"><b>멈춤 중</b><span class="sp">${d}일째 · ${esc(p.reason)}</span><button class="btn sm pri" data-act="resume">재개</button></div>`}
 function monthNav(){const i=vi(),m=M(i);return `<div class="stepnav"><button class="ic" data-act="mv" data-d="-1" ${i<=0?'disabled':''}>${I.l}</button><div class="t">${esc(m.ym)} · ${esc(m.theme)}<small>${YEARS[Math.max(0,yearOf(i))].y} · ${i===S.cur?'진행 중':i<S.cur?'지난 테마':'예정'}</small></div><button class="ic" data-act="mv" data-d="1" ${i>=S.months.length-1?'disabled':''}>${I.r}</button></div>`}
 const wide=()=>typeof innerWidth!=='undefined'&&innerWidth>=900;
@@ -41,17 +45,17 @@ function vHome(){
  const up=n?m.items.map((_,j)=>j).filter(j=>j!==k&&!m.items[j].done).slice(0,4):[];
  return `${pauseBanner()}${homeBanners()}
  <div class="card hero"><div class="row"><div class="sp"><span class="tag acc">${y.y} · ${y.t}</span><h2 style="margin:8px 0 2px">${esc(m.ym)} ${esc(m.theme)}</h2><div class="muted">${esc(m.goal)}</div></div>${ring(n?dn/n:0,dn+'/'+(n||20),'일차 완료')}</div>
- <div class="prog"><i style="width:${n?dn/n*100:0}%"></i></div><div class="muted">${m.anchor?`수료 시험 예정 ${fmt(examDate(m))}`:'시작일 미정'}${totalPause()>=1?` · 멈춤 누적 ${Math.round(totalPause())}일`:''}</div></div>
+ ${progBar(dn,n||20,'일 완료',true)}<div class="muted">${m.anchor?`수료 시험 예정 ${fmt(examDate(m))}`:'시작일 미정'}${totalPause()>=1?` · 멈춤 누적 ${Math.round(totalPause())}일`:''}</div></div>
  ${main}
  <button class="btn wide" style="margin-bottom:14px" data-act="chat">AI 튜터에게 질문</button>
- ${up.length?`<h3 style="margin-top:4px">이어서 할 학습</h3>${up.map(j=>dayRow(m,j,S.cur)).join('')}`:''}
+ ${up.length?`<h3 style="margin-top:4px">이어서 할 학습</h3>${up.map(j=>dayRow(m,j,S.cur)).join('')}<button class="btn wide ghost" data-act="tab" data-t="cur">전체 일정 보기 →</button>`:''}
  <div class="grid3" style="margin-top:12px"><div class="stat"><b>${passed}/${S.months.length}</b><span>수료 테마</span></div><div class="stat"><b>${avg??'–'}</b><span>시험 평균</span></div><div class="stat"><b>${S.months.reduce((a,x)=>a+doneCnt(x),0)}</b><span>누적 학습일</span></div></div>
  <div class="card"><div class="row"><h3 class="sp" style="margin:0">${y.y} 마일스톤</h3><button class="btn sm ghost" data-act="tab" data-t="his">전체</button></div><ul class="pts" style="font-size:14px">${y.goals.map(g=>`<li>${esc(g)}</li>`).join('')}</ul></div>`}
 
 /* ======================= 화면: 과정 (커리큘럼 + 시험 + 요약·자료) ======================= */
 function vCur(){const i=vi(),m=M(i),sec=ui.sec||'day';
  return `${pauseBanner()}${monthNav()}
- <div class="card"><div class="muted">이달 목표</div><div style="margin:4px 0 2px;font-weight:600">${esc(m.goal)}</div><div class="prog"><i style="width:${m.items.length?doneCnt(m)/m.items.length*100:0}%"></i></div><div class="muted">${doneCnt(m)}/${m.items.length}일 · ${best(m)!=null?'시험 최고 '+best(m)+'점':'시험 전'}</div></div>
+ <div class="card"><div class="muted">이달 목표</div><div style="margin:4px 0 2px;font-weight:600">${esc(m.goal)}</div>${progBar(doneCnt(m),m.items.length,'일 완료',true)}<div class="muted">${best(m)!=null?'시험 최고 '+best(m)+'점':'시험 전'}</div></div>
  <div class="seg" style="margin-bottom:12px">${[['day','일별 학습'],['ex','시험·오답'],['ref','요약·자료']].map(([k,n])=>`<button class="${sec===k?'on':''}" data-act="sec" data-s="${k}">${n}</button>`).join('')}</div>
  ${sec==='ex'?examBlock(i):sec==='ref'?refBlock(i):wide()&&m.items.length?splitDay(i):dayBlock(i)}`}
 function splitDay(i){const m=M(i);if(!ui.sel||ui.sel.m!==i||ui.sel.k>=m.items.length)ui.sel={m:i,k:Math.max(0,nextItem(m))};
@@ -104,7 +108,7 @@ function vResult(r){const m=M(r.m),a=r.att||m.attempts[r.a],v=verdict(a.score);
 
 /* ======================= 화면: 이력 ======================= */
 function vHis(){
- const yrs=YEARS.map((y,yi)=>{const ms=S.months.map((m,i)=>({m,i})).filter(x=>yearOf(x.i)===yi),pass=ms.filter(x=>best(x.m)>=80).length,cur=yearOf(S.cur)===yi;return `<div class="yr ${cur?'cur':''}"><b>${y.y} · ${y.t}</b> <span class="muted">${y.p}</span>${ms.length?` <span class="tag ${cur?'acc':''}">수료 ${pass}/${ms.length}</span>`:''}<ul>${y.goals.map(g=>`<li>${esc(g)}</li>`).join('')}</ul></div>`}).join('');
+ const yrs=YEARS.map((y,yi)=>{const ms=S.months.map((m,i)=>({m,i})).filter(x=>yearOf(x.i)===yi),pass=ms.filter(x=>best(x.m)>=80).length,cur=yearOf(S.cur)===yi;return `<div class="yr ${cur?'cur':''}"><b>${y.y} · ${y.t}</b> <span class="muted">${y.p}</span>${ms.length?` <span class="tag ${cur?'acc':''}">수료 ${pass}/${ms.length}</span>`:''}${ms.length?progBar(pass,ms.length,'개월 수료',false):''}<ul>${y.goals.map(g=>`<li>${esc(g)}</li>`).join('')}</ul></div>`}).join('');
  const rows=S.months.map((m,i)=>{const b=best(m),v=b!=null?verdict(b):null;return `<button class="mrow" data-act="review" data-m="${i}" style="width:100%;text-align:left"><span class="l">${esc(m.ym)}</span><div class="c"><div style="font-weight:600;${i>S.cur?'color:var(--sub)':''}">${esc(m.theme)}</div><div class="muted">${doneCnt(m)}/${m.items.length||'–'}일${m.attempts.length?` · 응시 ${m.attempts.length}회`:''}</div></div>${v?`<span class="tag ${v.c}">${b}점</span>`:i===S.cur?'<span class="tag acc">진행</span>':''}</button>`}).join('');
  const acts=S.acts.slice().sort((a,b)=>a.d<b.d?1:-1).map(a=>`<div class="act"><span class="muted" style="flex:none;width:72px">${a.d.slice(2).replace(/-/g,'.')}</span><span class="tag" style="flex:none">${esc(a.t)}</span><div style="flex:1">${esc(a.title)}${a.memo?`<div class="muted">${esc(a.memo)}</div>`:''}</div><button class="muted" data-act="delact" data-id="${a.id}">✕</button></div>`).join('');
  return `<h2>마일스톤</h2><div class="card">${yrs}</div>
